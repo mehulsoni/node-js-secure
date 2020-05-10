@@ -148,17 +148,7 @@ router.post("/validate/message",
             }
 );
 
-// RETURNS ALL THE USERS SIGNED MESSAGES IN THE DATABASE
-router.get('/signed-messages/:address', authenticateJWT, function (req, res) {
-	SignedMessage.find({owner: req.params.address}, function (err, messages) {
-		if (err) {
-			return res.status(500).send("There was a problem finding the signed Messages.");
-		}
-		res.status(200).send(messages);
-	});
-});
-
-// RETURNS ALL THE USERS TOKEN MESSAGES IN THE DATABASE
+// VERIFY JWT TOKEN IS EXPIRED OR NOT
 router.get('/verify', authenticateJWT, function (req, res) {
 	res.status(200).send(messages);
 });
