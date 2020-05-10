@@ -150,7 +150,11 @@ router.post("/validate/message",
 
 // VERIFY JWT TOKEN IS EXPIRED OR NOT
 router.get('/verify', authenticateJWT, function (req, res) {
-	res.status(200).send(messages);
+	res.status(200).send({
+		                     auth: true,
+		                     message: 'sucess',
+		                     date: (new Date()).getTime().toString()
+	                     });
 });
 
 module.exports = router;
