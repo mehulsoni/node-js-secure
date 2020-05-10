@@ -1,9 +1,14 @@
-var express = require('express');
-var app = express();
-var db = require('./db');
+const express = require('express');
+const app = express();
+const db = require('./db');
 
-var UserController = require('./modules/controllers/UserController');
-var WalletController = require('./modules/controllers/WalletController');
+const cookieParser = require('cookie-parser');
+
+const UserController = require('./modules/controllers/UserController');
+const WalletController = require('./modules/controllers/WalletController');
+
+
+app.use(cookieParser());
 
 app.use('/users', UserController);
 app.use('/wallets', WalletController);

@@ -51,60 +51,101 @@ const authenticateJWT = (req, res, next) => {
 	}
 };
 
-router.post(
-	"/validate/message", authenticateJWT,
-	[
-		check("owner", "Please enter a valid owner address").exists(),
-		check("sign", "Please enter a valid sign message").exists(),
-		check("message", "Please enter a valid message").exists()
-	],
-	async (req, res) => {
-		try {
-			// validate request parameter
-			const errors = validationResult(req);
-			if (!errors.isEmpty()) {
-				return res.status(400).json({
-					                            errors: errors.array()
-				                            });
-			}
-			const {owner, sign, message} = req.body;
+router.post("/validate/message",
+            [
+	            check("owner", "Please enter a valid owner address").exists(),
+	            check("sign", "Please enter a valid sign message").exists(),
+	            check("message", "Please enter a valid message").exists()
+            ],
+            async (req, res) => {
 
-			const signer = recoverPublicKey(sign, hashPersonalMessage(message));
-			let curr_date = new Date();
-			const verified = signer.toLowerCase() === owner.toLowerCase()
-			if (verified) {
-				let x = true;
-				let signedMessage = new SignedMessage({
-					                                      owner: owner,
-					                                      sign: sign,
-					                                      isValid: x,
-					                                      message: message,
-					                                      signedAddress: signer,
-					                                      signed_time: new Date()
-				                                      });
-				await signedMessage.save();
-				return res.status(200).json({auth: x, message: signedMessage});
-			} else {
-				let x = false;
-				let signedMessage = new SignedMessage({
-					                                      owner: owner,
-					                                      sign: sign,
-					                                      isValid: x,
-					                                      message: message,
-					                                      signedAddress: signer,
-					                                      signed_time: new Date()
-				                                      });
-				await signedMessage.save();
-				return res.status(401).json({auth: x, message: signedMessage});
-			}
+	            try {
+		            // validate request parameter
+		            const errors = validationResult(req);
+		            if (!errors.isEmpty()) {
+			            return res.status(400).json({
+				                                        errors: errors.array()
+			                                        });
+		            }
 
-		} catch (e) {
-			console.error(e);
-			return res.status(500).json({
-				                            message: "Server Error"
-			                            });
-		}
-	}
+
+		            const {owner, sign, message} = req.body;
+		            if (message === '') {
+			            return res.status(400).json({
+				                                        errors: "Invalid message"
+			                                        });
+		            }
+
+		            // mehul.soni89@gmail.com 1589070400311 check for old time requests
+		            const timestamp = message.split(' ')[1];
+		            const curr_time = (new Date()).getTime();
+		            if (((curr_time - timestamp) / 1000 / 60) > 1) {
+			            return res.status(400).json({
+				                                        errors: "Invalid Request"
+			                                        });
+		            }
+
+		            // check for signature already exist into database or not.
+		            let signedMessage = await SignedMessage.findOne({
+			                                                            sign
+		                                                            });
+		            if (signedMessage) {
+			            return res.status(400).json({
+				                                        message: "Invalid Request"
+			                                        });
+		            }
+
+
+		            const signer = recoverPublicKey(sign, hashPersonalMessage(message));
+		            const verified = signer.toLowerCase() === owner.toLowerCase()
+
+		            if (!verified) {
+			            return res.status(401).json({auth: false, message: signedMessage});
+		            }
+
+		            let status = true;
+		            signedMessage = new SignedMessage({
+			                                              owner: owner,
+			                                              sign: sign,
+			                                              isValid: status,
+			                                              message: message,
+			                                              signedAddress: signer,
+			                                              signed_time: new Date()
+		                                              });
+		            await signedMessage.save();
+
+		            const payload = {
+			            user: {
+				            address: owner
+			            }
+		            };
+
+		            jwt.sign(
+			            payload,
+			            config.secret,
+			            {
+				            expiresIn: '1h'
+			            },
+			            (err, token) => {
+				            if (err) {
+					            throw err;
+				            }
+
+				          return res.status(200).json({
+					                                 auth: true,
+					                                 addess: owner,
+					                                 token: token,
+					                                 signed_time: (new Date()).getTime().toString()
+				                                 });
+			            }
+		            );
+	            } catch (e) {
+		            console.error(e);
+		            return res.status(500).json({
+			                                        message: "Server Error"
+		                                        });
+	            }
+            }
 );
 
 // RETURNS ALL THE USERS SIGNED MESSAGES IN THE DATABASE
