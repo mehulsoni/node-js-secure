@@ -120,7 +120,7 @@ router.post("/validate/message",
 
 		            let status = true;
 		            signedMessage = new SignedMessage({
-			                                              user: User,
+			                                              user: user._id,
 			                                              sign: sign,
 			                                              isValid: status,
 			                                              message: message,
@@ -148,6 +148,7 @@ router.post("/validate/message",
 
 				            return res.status(200).json({
 					                                        auth: true,
+					                                        signedMessage,
 					                                        user: user,
 					                                        token: token,
 					                                        signed_time: (new Date()).getTime().toString()
