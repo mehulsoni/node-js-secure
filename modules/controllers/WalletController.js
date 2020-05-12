@@ -3,6 +3,7 @@ const ethUtil = require('ethereumjs-util')
 const jwt = require('jsonwebtoken');
 const {check, validationResult} = require("express-validator");
 const SignedMessage = require('../models/SignedMessage');
+var User = require('../models/User');
 const config = require('../config/config');
 
 const express = require('express');
@@ -68,7 +69,6 @@ router.post("/validate/message",
 			                                        });
 		            }
 
-
 		            const {owner, sign, message} = req.body;
 		            if (message === '') {
 			            return res.status(400).json({
@@ -95,7 +95,6 @@ router.post("/validate/message",
 			                                        });
 		            }
 
-
 		            const signer = recoverPublicKey(sign, hashPersonalMessage(message));
 		            const verified = signer.toLowerCase() === owner.toLowerCase()
 
@@ -103,9 +102,25 @@ router.post("/validate/message",
 			            return res.status(401).json({auth: false, message: signedMessage});
 		            }
 
+		            // check for user exist or not. if yes, update counter and last login date. if not then create new
+		            // one with
+		            let user = await User.findOne({
+			                                          owner: owner
+		                                          });
+		            if (!user) {
+			            user = new User({
+				                            owner: owner,
+				                            login_count: 1,
+				                            last_login_time: new Date(),
+			                            });
+		            }
+		            user.login_count += 1;
+		            user.last_login_time = new Date();
+		            await user.save();
+
 		            let status = true;
 		            signedMessage = new SignedMessage({
-			                                              owner: owner,
+			                                              user: User,
 			                                              sign: sign,
 			                                              isValid: status,
 			                                              message: message,
@@ -116,7 +131,7 @@ router.post("/validate/message",
 
 		            const payload = {
 			            user: {
-				            address: owner
+				            owner: owner
 			            }
 		            };
 
@@ -131,12 +146,12 @@ router.post("/validate/message",
 					            throw err;
 				            }
 
-				          return res.status(200).json({
-					                                 auth: true,
-					                                 addess: owner,
-					                                 token: token,
-					                                 signed_time: (new Date()).getTime().toString()
-				                                 });
+				            return res.status(200).json({
+					                                        auth: true,
+					                                        user: user,
+					                                        token: token,
+					                                        signed_time: (new Date()).getTime().toString()
+				                                        });
 			            }
 		            );
 	            } catch (e) {
